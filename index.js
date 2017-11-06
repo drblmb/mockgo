@@ -3,7 +3,7 @@ var path = require('path')
 
 var async = require('async')
 var portfinder = require('portfinder')
-var mongodbPrebuilt = require('mongodb-prebuilt');
+var { MongodHelper } = require('mongodb-prebuilt');
 var mongodb = require('mongodb')
 var debug = require('debug')('mockgo')
 
@@ -11,6 +11,7 @@ var connectionCache = {}
 var maxRetries = 5
 var serverConfig = null
 var serverEmitter = null
+var mongodHelper = null
 
 const startServer = (callback, retries) => {
     retries = retries || 0
@@ -22,9 +23,16 @@ const startServer = (callback, retries) => {
             host: '127.0.0.1',
             port: port
         }
-
-        debug('startServer on port %d', port)
-        serverEmitter = mongodbPrebuilt.start_server({
+        mongodHelper = new MongodHelper(['--port', `${port}`]);
+        console.log('startServer on port %d', port)
+        mongodHelper.run().then((started) => {
+		console.log('mongod is running');
+		callback(null, config);
+	}, (e) => {
+		console.log('error starting', e);
+		callback(e, config);
+	});
+        /*serverEmitter = mongodbPrebuilt.start_server({
             args: {
                 storageEngine: 'ephemeralForTest',
                 bind_ip: config.host,
@@ -38,7 +46,7 @@ const startServer = (callback, retries) => {
             }
 
             callback(error, config)
-        })
+        })*/
     })
 }
 
@@ -75,6 +83,7 @@ const getConnection = (dbName, callback) => {
         dbName = 'testDatabase'
     }
 
+/*
     var connection = connectionCache[dbName]
     if (connection) {
         debug('retrieve connection from connection cache for db "%s"', dbName)
@@ -84,6 +93,7 @@ const getConnection = (dbName, callback) => {
     if (serverConfig) {
         return createServerSpecificConfiguration(serverConfig, dbName, callback)
     }
+*/
 
     startServer((error, resultConfiguration) => {
         if (error) {
@@ -100,6 +110,8 @@ const shutDown = callback => {
         callback = () => {}
     }
 
+    callback();
+/*mongodHelper.stop().
     if (serverEmitter) {
         debug('emit shutdown event')
         serverEmitter.emit('mongoShutdown')
@@ -118,6 +130,7 @@ const shutDown = callback => {
     } else {
         process.nextTick(() => callback(null))
     }
+*/
 }
 
 module.exports = {
